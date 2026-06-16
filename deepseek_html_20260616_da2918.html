@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>客服工作台 · 聊天+AI知识库</title>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing: border-box; }
+        :root {
+            --primary-green: #2e7d32; --primary-light: #e8f5e9; --primary-dark: #1b5e20;
+            --sidebar-bg: #ffffff; --sidebar-border: #e2e8f0; --hover-bg: #f3f4f6;
+            --active-bg: #e8f5e9; --gray-50: #f9fafb; --gray-100: #f3f4f6; --gray-200: #e5e7eb;
+            --gray-500: #6b7280; --gray-700: #374151; --gray-900: #111827;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05); --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --radius-lg: 0.75rem; --radius-md: 0.5rem;
+        }
+        body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; }
+        .app { display: flex; height: 100vh; }
+        /* 左侧双列导航 */
+        .sidebar { display: flex; width: 460px; flex-shrink: 0; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); }
+        .nav-shop-list { width: 200px; background: #ffffff; border-right: 1px solid var(--sidebar-border); overflow-y: auto; }
+        .shop-header { padding: 0.75rem 1rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: var(--gray-500); background: #ffffff; border-bottom: 1px solid var(--sidebar-border); position: sticky; top: 0; }
+        .shop-item { padding: 0.75rem 1rem; cursor: pointer; font-size: 0.8rem; border-left: 3px solid transparent; transition: all 0.1s; display: flex; flex-direction: column; gap: 0.25rem; border-bottom: 1px solid #f0e6d0; }
+        .shop-item:hover { background: var(--hover-bg); }
+        .shop-item.active { background: var(--active-bg); border-left-color: var(--primary-green); }
+        .shop-title { font-weight: 600; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+        .shop-platform { font-size: 0.7rem; color: #5a6e4a; }
+        .shop-email { font-size: 0.7rem; color: #6b7280; word-break: break-all; }
+        .shop-time { font-size: 0.6rem; color: #9ca3af; }
+        .nav-contact-list { flex: 1; overflow-y: auto; background: #ffffff; }
+        .contact-header { padding: 0.75rem 1rem; font-size: 0.7rem; font-weight: 600; color: var(--gray-500); background: #ffffff; border-bottom: 1px solid var(--sidebar-border); position: sticky; top: 0; }
+        .contact-item { padding: 0.75rem 1rem; cursor: pointer; font-size: 0.8rem; border-left: 3px solid transparent; transition: 0.1s; display: flex; flex-direction: column; gap: 0.2rem; border-bottom: 1px solid #f0e6d0; }
+        .contact-item:hover { background: var(--hover-bg); }
+        .contact-item.active { background: var(--active-bg); border-left-color: var(--primary-green); }
+        .contact-name { font-weight: 500; }
+        .contact-email { font-size: 0.7rem; color: #6b7280; }
+        .contact-role { font-size: 0.65rem; color: var(--primary-green); }
+        /* 右侧聊天区 */
+        .chat-container { flex: 1; display: flex; flex-direction: column; background: #f8fafc; overflow: hidden; }
+        .chat-header { background: white; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--sidebar-border); }
+        .chat-header h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; }
+        .chat-header p { font-size: 0.75rem; color: var(--gray-500); }
+        .messages-area { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .message { display: flex; max-width: 75%; }
+        .message.client { align-self: flex-start; }
+        .message.agent { align-self: flex-end; flex-direction: row-reverse; }
+        .bubble { padding: 0.6rem 1rem; border-radius: 1.2rem; font-size: 0.85rem; line-height: 1.4; word-break: break-word; box-shadow: var(--shadow-sm); }
+        .client .bubble { background: #e5e7eb; color: #1f2937; border-bottom-left-radius: 0.2rem; }
+        .agent .bubble { background: var(--primary-green); color: white; border-bottom-right-radius: 0.2rem; }
+        .message-time { font-size: 0.6rem; color: var(--gray-500); margin-top: 0.2rem; margin-left: 0.5rem; margin-right: 0.5rem; }
+        .editor-area { background: white; border-top: 1px solid var(--sidebar-border); padding: 0.75rem 1.5rem 1rem; position: relative; }
+        .btn-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+        .kb-btn, .extra-btn { background: var(--primary-light); border: none; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 500; color: var(--primary-dark); cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: 0.2s; }
+        .kb-btn:hover, .extra-btn:hover { background: var(--primary-green); color: white; }
+        .ql-toolbar.ql-snow { border: 1px solid var(--gray-200); border-radius: 0.5rem 0.5rem 0 0; background: #fafafa; }
+        .ql-container.ql-snow { border: 1px solid var(--gray-200); border-top: none; border-radius: 0 0 0.5rem 0.5rem; min-height: 100px; font-size: 0.85rem; }
+        .send-btn { margin-top: 0.5rem; display: flex; justify-content: flex-end; }
+        .btn-send { background: var(--primary-green); color: white; border: none; padding: 0.4rem 1.2rem; border-radius: 2rem; cursor: pointer; font-size: 0.8rem; }
+        /* AI 知识库面板 (从编辑器上方滑出) */
+        .ai-panel {
+            position: relative;
+            background: white;
+            border-bottom: 1px solid var(--sidebar-border);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+            padding: 0 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .ai-panel.open {
+            max-height: 500px;
+            padding: 1rem 1.5rem;
+            overflow-y: auto;
+        }
+        .ai-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .ai-panel-header h4 { font-size: 1rem; font-weight: 600; color: var(--primary-green); }
+        .ai-panel-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--gray-500); }
+        .ai-panel-body { display: flex; flex-direction: column; gap: 0.5rem; }
+        .ai-search-area { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+        .ai-search-area input { flex: 1; padding: 0.4rem; border: 1px solid var(--gray-200); border-radius: 0.3rem; font-size: 0.85rem; min-width: 120px; }
+        .ai-search-area button { background: var(--primary-light); border: none; padding: 0.4rem 0.8rem; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem; }
+        .ai-recommend-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; }
+        .ai-recommend-item { background: var(--gray-50); padding: 0.5rem; border-radius: 0.3rem; border-left: 3px solid var(--primary-green); }
+        .ai-recommend-item .answer { font-size: 0.85rem; color: var(--gray-700); }
+        .ai-recommend-item .meta { font-size: 0.7rem; color: var(--gray-500); display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.2rem; }
+        .ai-recommend-item .meta .tag { background: var(--gray-200); padding: 0.1rem 0.4rem; border-radius: 1rem; }
+        .ai-recommend-item .actions { margin-top: 0.3rem; display: flex; gap: 0.5rem; }
+        .ai-recommend-item .actions button { background: var(--primary-light); border: none; padding: 0.1rem 0.5rem; border-radius: 0.2rem; cursor: pointer; font-size: 0.7rem; }
+        .ai-empty { color: var(--gray-500); font-size: 0.85rem; padding: 0.5rem 0; }
+        .ai-pagination-info { font-size: 0.7rem; color: var(--gray-500); }
+        /* 知识库抽屉 (右侧) */
+        .drawer { position: fixed; top: 0; right: -820px; width: 780px; height: 100vh; background: white; box-shadow: -4px 0 20px rgba(0,0,0,0.1); z-index: 1000; transition: right 0.3s ease; display: flex; flex-direction: column; overflow: hidden; }
+        .drawer.open { right: 0; }
+        @media (max-width: 900px) { .drawer { width: 90vw; right: -90vw; } .drawer.open { right: 0; } }
+        .drawer-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; background: white; }
+        .drawer-header h3 { font-size: 1.2rem; font-weight: 600; color: var(--primary-green); }
+        .close-drawer { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray-500); }
+        .drawer-content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+        .kb-filter-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; align-items: flex-end; }
+        .kb-filter-group { flex: 1; min-width: 140px; }
+        .kb-filter-group label { font-size: 0.7rem; font-weight: 500; color: var(--gray-500); display: block; margin-bottom: 0.2rem; }
+        .kb-filter-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--gray-200); border-radius: 0.5rem; font-size: 0.85rem; }
+        .action-group { display: flex; gap: 0.5rem; align-items: center; }
+        .kb-create-btn, .type-manage-btn, .type-list-btn { background: var(--primary-green); color: white; border: none; padding: 0.5rem 1rem; border-radius: 2rem; cursor: pointer; font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.4rem; transition: 0.2s; }
+        .kb-create-btn:hover, .type-manage-btn:hover, .type-list-btn:hover { background: var(--primary-dark); }
+        .type-manage-btn { background: #f59e0b; }
+        .type-manage-btn:hover { background: #d97706; }
+        .type-list-btn { background: #8b5cf6; }
+        .type-list-btn:hover { background: #7c3aed; }
+        .qa-list { background: white; border-radius: var(--radius-md); border: 1px solid var(--gray-200); margin-top: 1rem; }
+        .qa-item { padding: 1rem; border-bottom: 1px solid var(--gray-100); }
+        .qa-item:last-child { border-bottom: none; }
+        .qa-question { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .tag-group { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem; }
+        .tag { font-size: 0.65rem; padding: 0.2rem 0.6rem; border-radius: 2rem; background: var(--gray-100); color: var(--gray-700); }
+        .tag-ai { background: #e0e7ff; color: #3730a3; }
+        .tag-manual { background: #d1fae5; color: #065f46; }
+        .tag-custom { background: #ede9fe; color: #5b21b6; }
+        .tag-type { background: #ffedd5; color: #9a3412; font-weight: 500; }
+        .qa-answer { background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius-md); margin: 0.75rem 0; font-size: 0.85rem; border-left: 2px solid var(--primary-green); }
+        .qa-meta { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--gray-500); }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 0.7rem; margin-left: 0.5rem; color: var(--gray-500); }
+        .action-btn.edit:hover { color: var(--primary-green); }
+        .action-btn.delete:hover { color: #ef4444; }
+        .pagination { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+        .page-btn { padding: 0.25rem 0.6rem; border: 1px solid var(--gray-200); background: white; border-radius: 0.3rem; cursor: pointer; font-size: 0.75rem; }
+        .page-btn.active { background: var(--primary-green); color: white; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1100; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; width: 90%; max-width: 900px; border-radius: var(--radius-lg); max-height: 80vh; overflow-y: auto; }
+        .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 1.25rem; }
+        .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 0.75rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-label { font-weight: 500; font-size: 0.8rem; display: block; margin-bottom: 0.3rem; }
+        .form-input, .form-textarea, .form-select { width: 100%; padding: 0.5rem; border: 1px solid var(--gray-200); border-radius: 0.5rem; }
+        .form-input:read-only { background-color: #f3f4f6; cursor: not-allowed; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #111827; color: white; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; z-index: 1200; opacity: 0; transition: 0.2s; pointer-events: none; }
+        .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 999; display: none; }
+        .drawer-overlay.show { display: block; }
+        datalist { background: white; }
+        /* 类型管理表格 */
+        .type-list-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .type-list-table th, .type-list-table td { border: 1px solid var(--gray-200); padding: 0.5rem; text-align: left; }
+        .type-list-table th { background: var(--gray-50); font-weight: 600; font-size: 0.8rem; }
+        .type-name-edit { width: 100%; padding: 0.2rem; border: 1px solid var(--gray-200); border-radius: 0.2rem; }
+        .add-type-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center; }
+        .add-type-row input { flex: 1; padding: 0.4rem; border: 1px solid var(--gray-200); border-radius: 0.3rem; }
+        .add-type-row button { background: var(--primary-green); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 0.3rem; cursor: pointer; }
+        .remove-row-btn { background: #fee2e2; color: #b91c1c; border: none; padding: 0.2rem 0.5rem; border-radius: 0.3rem; cursor: pointer; font-size: 0.7rem; }
+        .remove-row-btn:hover { background: #fecaca; }
+        .edit-type-btn { background: #dbeafe; color: #1e40af; border: none; padding: 0.2rem 0.5rem; border-radius: 0.3rem; cursor: pointer; font-size: 0.7rem; margin-right: 0.3rem; }
+        .edit-type-btn:hover { background: #bfdbfe; }
+        .save-type-btn { background: #d1fae5; color: #065f46; border: none; padding: 0.2rem 0.5rem; border-radius: 0.3rem; cursor: pointer; font-size: 0.7rem; margin-right: 0.3rem; }
+        .save-type-btn:hover { background: #a7f3d0; }
+        .cancel-edit-btn { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 0.2rem 0.5rem; border-radius: 0.3rem; cursor: pointer; font-size: 0.7rem; }
+        .cancel-edit-btn:hover { background: #e5e7eb; }
+        /* 类型分配多选下拉 */
+        .multi-select-dropdown { position: relative; width: 100%; }
+        .multi-select-trigger { background: white; border: 1px solid var(--gray-200); border-radius: 0.3rem; padding: 0.3rem 0.5rem; cursor: pointer; display: flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; min-height: 32px; }
+        .multi-select-trigger .selected-tag { background: var(--primary-light); color: var(--primary-dark); font-size: 0.7rem; padding: 0.1rem 0.3rem; border-radius: 1rem; display: inline-flex; align-items: center; gap: 0.2rem; }
+        .multi-select-trigger .selected-tag .remove-tag { cursor: pointer; font-weight: bold; margin-left: 0.2rem; }
+        .multi-select-dropdown-panel { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 0.3rem; max-height: 250px; overflow-y: auto; z-index: 10; display: none; margin-top: 2px; box-shadow: var(--shadow-md); }
+        .multi-select-dropdown-panel.open { display: block; }
+        .search-input { width: 100%; padding: 0.3rem 0.5rem; border: 1px solid var(--gray-200); border-radius: 0.3rem; margin-bottom: 0.4rem; }
+        .multi-select-option { padding: 0.3rem 0.5rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+        .multi-select-option:hover { background: var(--gray-100); }
+        .multi-select-option input[type="checkbox"] { margin: 0; }
+        .multi-select-option label { flex: 1; cursor: pointer; }
+        .add-type-btn { background: var(--primary-light); border: none; padding: 0.3rem 0.8rem; border-radius: 2rem; font-size: 0.75rem; cursor: pointer; margin-top: 0.5rem; }
+        .type-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        .type-table th, .type-table td { border: 1px solid var(--gray-200); padding: 0.5rem; text-align: left; vertical-align: top; }
+        .type-table th { background: var(--gray-50); font-weight: 600; font-size: 0.8rem; }
+        .person-select { width: 100%; padding: 0.4rem; border: 1px solid var(--gray-200); border-radius: 0.3rem; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="sidebar">
+        <div class="nav-shop-list">
+            <div class="shop-header">店铺</div>
+            <div class="shop-item" data-shop="amz_sy_us_1"><div class="shop-title">🛒 AMZ-SY-US <span class="shop-platform">Amazon</span></div><div class="shop-email">dorisllinton@gmail.com</div><div class="shop-time">26-06-15 17:40:46</div></div>
+            <div class="shop-item" data-shop="amz_zjg_us"><div class="shop-title">🛒 AMZ-ZJG-US <span class="shop-platform">Amazon</span></div><div class="shop-email">liqiyue93@Outlook.com</div><div class="shop-time">26-06-15 17:40:46</div></div>
+            <div class="shop-item" data-shop="ozon_fht_ru"><div class="shop-title">📦 OZON-FHT-RU <span class="shop-platform">Ozon</span></div><div class="shop-email">wesdpl23@163.com</div><div class="shop-time">26-06-15 17:40:46</div></div>
+            <div class="shop-item" data-shop="amz_sy_us_2"><div class="shop-title">🛒 AMZ-SY-US <span class="shop-platform">Amazon</span></div><div class="shop-email">betteglazer@gmail.com</div><div class="shop-time">26-06-15 17:40:23</div></div>
+            <div class="shop-item" data-shop="amz_shw_us"><div class="shop-title">🛒 AMZ-SHW-US <span class="shop-platform">Amazon</span></div><div class="shop-email">xuganmaoyi906@163.com</div><div class="shop-time">26-06-15 17:39:39</div></div>
+            <div class="shop-item" data-shop="oohho"><div class="shop-title">📧 Oohho客服邮箱</div><div class="shop-email">support@oohho.me</div><div class="shop-time">26-06-15 17:39:37</div></div>
+            <div class="shop-item" data-shop="ozon_kjl_ru"><div class="shop-title">📦 OZON-KJL-RU <span class="shop-platform">Ozon</span></div><div class="shop-email">gajilami@163.com</div><div class="shop-time">26-06-15 17:39:34</div></div>
+            <div class="shop-item" data-shop="shfy_hipypaw"><div class="shop-title">🛍️ SHFY-X51-Hipypaw <span class="shop-platform">Shopify</span></div><div class="shop-email">support@hipypaw.com</div><div class="shop-time">26-06-15 17:39:33</div></div>
+            <div class="shop-item" data-shop="noon_pdl"><div class="shop-title">🛒 NOON-PDL <span class="shop-platform">Noon</span></div><div class="shop-email">pandeuo@outlook.com</div><div class="shop-time">26-06-15 17:39:33</div></div>
+            <div class="shop-item" data-shop="noon_yw"><div class="shop-title">🛒 NOON-YW <span class="shop-platform">Noon</span></div><div class="shop-email">janieneoy@outlook.com</div><div class="shop-time">26-06-15 17:39:32</div></div>
+            <div class="shop-item" data-shop="wal_xym_us"><div class="shop-title">🛒 WAL-XYM-US <span class="shop-platform">Walmart</span></div><div class="shop-email">wenxislw@163.com</div><div class="shop-time">26-06-15 17:39:32</div></div>
+            <div class="shop-item" data-shop="noon_ywz"><div class="shop-title">🛒 NOON-YWZ <span class="shop-platform">Noon</span></div><div class="shop-email">wensiedi@outlook.com</div><div class="shop-time">26-06-15 17:39:32</div></div>
+        </div>
+        <div class="nav-contact-list" id="contactListPanel">
+            <div class="contact-header">联系人</div>
+            <div id="contactItemsContainer"><div style="padding:1rem;text-align:center;color:#6b7280;">👈 请选择一个店铺</div></div>
+        </div>
+    </div>
+    <div class="chat-container">
+        <div class="chat-header" id="chatHeader"><h2>请选择联系人</h2><p>邮箱：--</p></div>
+        <div class="messages-area" id="messagesArea"><div style="text-align:center;padding:2rem;color:#9ca3af;">选择联系人后显示聊天记录</div></div>
+        <div class="editor-area">
+            <!-- AI 面板 (从上方滑出) -->
+            <div class="ai-panel" id="aiPanel">
+                <div class="ai-panel-header">
+                    <h4>🧠 AI 知识库推荐</h4>
+                    <button class="ai-panel-close" id="closeAiPanelBtn">✕</button>
+                </div>
+                <div class="ai-panel-body">
+                    <div class="ai-search-area">
+                        <input type="text" id="aiTypeSearch" placeholder="搜索类型...">
+                        <button id="aiShuffleBtn">🔄 换一批</button>
+                    </div>
+                    <div id="aiContextInfo" style="font-size:0.75rem;color:var(--gray-500);"></div>
+                    <div class="ai-recommend-list" id="aiRecommendList"></div>
+                    <div class="ai-pagination-info" id="aiPaginationInfo"></div>
+                </div>
+            </div>
+            <div class="btn-bar">
+                <button class="extra-btn" id="knowledgeBtn">📚 知识库</button>
+                <button class="kb-btn" id="openDrawerBtn">📦 沉淀知识库</button>
+                <button class="extra-btn">🤖 AI邮件</button>
+                <button class="extra-btn">🌐 批量翻译</button>
+                <button class="extra-btn">🔄 再次生成</button>
+                <button class="extra-btn">📜 智能邮件历史记录</button>
+            </div>
+            <div id="editorContainer"></div>
+            <div class="send-btn"><button class="btn-send" id="sendMsgBtn">发送消息</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- 右侧抽屉：沉淀知识库 -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="knowledgeDrawer">
+    <div class="drawer-header"><h3>📖 沉淀知识库</h3><button class="close-drawer" id="closeDrawerBtn">✕</button></div>
+    <div class="drawer-content">
+        <div class="kb-filter-bar">
+            <div class="kb-filter-group"><label>❓ 问题</label><input type="text" id="kbFilterQuestion" class="kb-filter-input" placeholder="问题关键词"></div>
+            <div class="kb-filter-group"><label>💡 答案</label><input type="text" id="kbFilterAnswer" class="kb-filter-input" placeholder="答案关键词"></div>
+            <div class="kb-filter-group"><label>🏷️ 标签</label><input type="text" id="kbFilterTag" class="kb-filter-input" placeholder="标签关键词"></div>
+            <div class="kb-filter-group"><label>📂 类型</label><input type="text" id="kbFilterType" class="kb-filter-input" placeholder="按类型筛选"></div>
+            <div class="action-group">
+                <button class="kb-create-btn" id="kbCreateBtn">➕ 新建问答</button>
+                <button class="type-manage-btn" id="typeManageBtn">🏷️ 类型分配</button>
+                <button class="type-list-btn" id="typeListBtn">📋 类型管理</button>
+            </div>
+        </div>
+        <div id="kbListContainer"></div>
+        <div id="kbPagination" class="pagination"></div>
+    </div>
+</div>
+
+<!-- 新建/编辑问答弹窗 -->
+<div id="kbModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3 id="kbModalTitle">新建问答</h3><button class="close-modal" id="closeModalBtn">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="editId" value="">
+            <div class="form-group"><label class="form-label">问题 *</label><input type="text" id="kbQuestion" class="form-input" placeholder="客户常问的问题"></div>
+            <div class="form-group"><label class="form-label">标准答案 *</label><textarea id="kbAnswer" class="form-textarea" rows="3" placeholder="回复话术/解决方案"></textarea></div>
+            <div class="form-group">
+                <label class="form-label">📂 类型（手动输入或下拉选择）</label>
+                <input type="text" id="kbType" class="form-input" list="typeOptionsList" placeholder="例如：物流问题、售后政策">
+                <datalist id="typeOptionsList"></datalist>
+                <div style="font-size:0.7rem; color:#6b7280; margin-top:0.2rem;">支持手动输入新类型，自动记录历史</div>
+            </div>
+            <div class="form-group"><label class="form-label">🏷️ 标签（逗号分隔）</label><input type="text" id="kbTags" class="form-input" list="tagOptionsList" placeholder="例如：双十一,满减"><datalist id="tagOptionsList"></datalist><div style="font-size:0.7rem; color:#6b7280;">可手动输入或从下拉选择历史标签</div></div>
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" id="cancelModalBtn" style="background:#f3f4f6; border:1px solid #ddd; padding:0.4rem 1rem;">取消</button><button class="btn-save" id="saveModalBtn" style="background:#2e7d32; color:white; border:none; padding:0.4rem 1rem; border-radius:0.5rem;">保存</button></div>
+    </div>
+</div>
+
+<!-- 类型分配弹窗 -->
+<div id="typeManageModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>📋 类型分配（分配人员 → 类型名称）</h3><button class="close-modal" id="closeTypeManageBtn">&times;</button></div>
+        <div class="modal-body"><div style="margin-bottom:0.5rem;font-size:0.75rem;color:#6b7280;">每行为一个人员分配多个类型，输入关键词可搜索过滤</div>
+            <table class="type-table" id="typeTable"><thead><tr><th>分配人员</th><th>类型名称（可多选，支持搜索）</th><th style="width:60px;">操作</th></tr></thead><tbody id="typeTableBody"></tbody></table>
+            <button class="add-type-btn" id="addTypeRowBtn">+ 添加新行</button>
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" id="cancelTypeManageBtn">取消</button><button class="btn-save" id="confirmTypeManageBtn">确认</button></div>
+    </div>
+</div>
+
+<!-- 类型管理弹窗 -->
+<div id="typeListModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header"><h3>📋 类型管理</h3><button class="close-modal" id="closeTypeListBtn">&times;</button></div>
+        <div class="modal-body">
+            <div style="margin-bottom:0.5rem;font-size:0.75rem;color:#6b7280;">管理所有类型名称，此处添加/删除/修改的类型将同步到类型分配下拉及已有问答</div>
+            <div class="add-type-row">
+                <input type="text" id="newTypeName" placeholder="输入新类型名称">
+                <button id="addTypeToListBtn">添加</button>
+            </div>
+            <table class="type-list-table" id="typeListTable">
+                <thead><tr><th>类型名称</th><th>创建时间</th><th style="width:120px;">操作</th></tr></thead>
+                <tbody id="typeListTableBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" id="cancelTypeListBtn">关闭</button></div>
+    </div>
+</div>
+
+<div id="toastMessage" class="toast"></div>
+
+<script>
+    // 店铺联系人数据
+    const shopContacts = {
+        amz_sy_us_1: [{ name: "Natlia", email: "dorisllinton@gmail.com", role: "店铺管理员" }, { name: "客服负责人", email: "service@amazon.com", role: "售后支持" }],
+        amz_zjg_us: [{ name: "Sandy", email: "liqiyue93@Outlook.com", role: "运营主管" }],
+        ozon_fht_ru: [{ name: "谭凡", email: "wesdpl23@163.com", role: "店铺经理" }],
+        amz_sy_us_2: [{ name: "Natlia", email: "betteglazer@gmail.com", role: "账号管理员" }],
+        amz_shw_us: [{ name: "曾倩瑜", email: "xuganmaoyi906@163.com", role: "销售专员" }],
+        oohho: [{ name: "客服团队", email: "support@oohho.me", role: "客户支持" }],
+        ozon_kjl_ru: [{ name: "谭凡", email: "gajilami@163.com", role: "运营" }],
+        shfy_hipypaw: [{ name: "邓菲", email: "support@hipypaw.com", role: "店主" }],
+        noon_pdl: [{ name: "谭凡", email: "pandeuo@outlook.com", role: "Noon 运营" }],
+        noon_yw: [{ name: "谭凡", email: "janieneoy@outlook.com", role: "Noon 专员" }],
+        wal_xym_us: [{ name: "谭凡", email: "wenxislw@163.com", role: "Walmart 负责人" }],
+        noon_ywz: [{ name: "谭凡", email: "wensiedi@outlook.com", role: "Noon 客服" }]
+    };
+    function getAllPersonnelOptions() { const set=new Set(); Object.values(shopContacts).forEach(contacts=>contacts.forEach(c=>set.add(c.name))); return Array.from(set).sort(); }
+
+    // ===== 类型管理 =====
+    let typeList = [];
+    let allTypeNames = new Set();
+
+    function loadTypeList(){
+        const stored = localStorage.getItem('type_list_data');
+        if(stored){
+            typeList = JSON.parse(stored);
+        }else{
+            const typesFromKB = new Set();
+            knowledgeBase.forEach(item=>{ if(item.type) typesFromKB.add(item.type); });
+            typeList = Array.from(typesFromKB).map(name => ({ name, createdAt: new Date().toISOString().slice(0,10) }));
+            if(typeList.length === 0){
+                typeList = [
+                    { name: '物流操作', createdAt: new Date().toISOString().slice(0,10) },
+                    { name: '售后政策', createdAt: new Date().toISOString().slice(0,10) },
+                    { name: '财务税务', createdAt: new Date().toISOString().slice(0,10) }
+                ];
+            }
+            saveTypeList();
+        }
+        updateAllTypeNames();
+    }
+    function saveTypeList(){
+        localStorage.setItem('type_list_data', JSON.stringify(typeList));
+        updateAllTypeNames();
+        updateTypeDatalistFromAssignments();
+    }
+    function updateAllTypeNames(){
+        allTypeNames.clear();
+        typeList.forEach(item => allTypeNames.add(item.name));
+    }
+
+    function renderTypeListTable(){
+        const tbody = document.getElementById('typeListTableBody');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        typeList.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td');
+            const tdTime = document.createElement('td');
+            tdTime.textContent = item.createdAt || '--';
+            const tdAction = document.createElement('td');
+            const editBtn = document.createElement('button');
+            editBtn.textContent = '编辑';
+            editBtn.className = 'edit-type-btn';
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '删除';
+            delBtn.className = 'remove-row-btn';
+            delBtn.addEventListener('click', ()=>{
+                if(confirm(`确定删除类型“${item.name}”吗？`)){
+                    typeList.splice(index, 1);
+                    saveTypeList();
+                    renderTypeListTable();
+                    showToast('类型已删除');
+                }
+            });
+            tdAction.appendChild(editBtn);
+            tdAction.appendChild(delBtn);
+            let editing = false;
+            const originalName = item.name;
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = item.name;
+            tdName.appendChild(nameSpan);
+            editBtn.addEventListener('click', ()=>{
+                if(editing) return;
+                editing = true;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'type-name-edit';
+                input.value = item.name;
+                tdName.innerHTML = '';
+                tdName.appendChild(input);
+                tdAction.innerHTML = '';
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = '保存';
+                saveBtn.className = 'save-type-btn';
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = '取消';
+                cancelBtn.className = 'cancel-edit-btn';
+                tdAction.appendChild(saveBtn);
+                tdAction.appendChild(cancelBtn);
+                const doSave = ()=>{
+                    const newName = input.value.trim();
+                    if(!newName){ showToast('类型名称不能为空', true); return; }
+                    if(newName !== originalName && allTypeNames.has(newName)){
+                        showToast('该类型已存在', true); return;
+                    }
+                    item.name = newName;
+                    saveTypeList();
+                    let updatedCount = 0;
+                    knowledgeBase.forEach(kbItem => {
+                        if(kbItem.type === originalName){
+                            kbItem.type = newName;
+                            updatedCount++;
+                        }
+                    });
+                    if(updatedCount > 0){
+                        saveKBData();
+                    }
+                    renderTypeListTable();
+                    showToast(`类型已更新${updatedCount > 0 ? `，已同步更新 ${updatedCount} 条问答` : ''}`);
+                };
+                saveBtn.addEventListener('click', doSave);
+                cancelBtn.addEventListener('click', ()=>{
+                    tdName.innerHTML = '';
+                    tdName.appendChild(nameSpan);
+                    tdAction.innerHTML = '';
+                    tdAction.appendChild(editBtn);
+                    tdAction.appendChild(delBtn);
+                    editing = false;
+                });
+                input.addEventListener('keypress', (e)=>{
+                    if(e.key === 'Enter') doSave();
+                    if(e.key === 'Escape') cancelBtn.click();
+                });
+                input.focus();
+                input.select();
+            });
+            tr.appendChild(tdName);
+            tr.appendChild(tdTime);
+            tr.appendChild(tdAction);
+            tbody.appendChild(tr);
+        });
+    }
+
+    function openTypeListModal(){
+        renderTypeListTable();
+        document.getElementById('typeListModal').classList.add('active');
+    }
+    function closeTypeListModal(){
+        document.getElementById('typeListModal').classList.remove('active');
+    }
+
+    function addNewTypeToList(){
+        const input = document.getElementById('newTypeName');
+        const name = input.value.trim();
+        if(!name){ showToast('请输入类型名称', true); return; }
+        if(allTypeNames.has(name)){ showToast('该类型已存在', true); return; }
+        typeList.push({ name, createdAt: new Date().toISOString().slice(0,10) });
+        saveTypeList();
+        renderTypeListTable();
+        input.value = '';
+        showToast('类型添加成功');
+    }
+
+    function updateTypeDatalistFromAssignments(){
+        const typeDatalist = document.getElementById('typeOptionsList');
+        if(typeDatalist){
+            typeDatalist.innerHTML = '';
+            Array.from(allTypeNames).sort().forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                typeDatalist.appendChild(opt);
+            });
+        }
+    }
+
+    // ===== 类型分配 =====
+    let typeMappings = [];
+
+    function loadTypeMappings(){
+        const stored = localStorage.getItem('type_mappings_v3');
+        if(stored){ typeMappings = JSON.parse(stored); }
+        else{ typeMappings = []; saveTypeMappings(); }
+    }
+    function saveTypeMappings(){
+        localStorage.setItem('type_mappings_v3', JSON.stringify(typeMappings));
+    }
+
+    function getTableRowsFromMappings(){
+        const personMap = new Map();
+        typeMappings.forEach(({type, person}) => {
+            if(!person) return;
+            if(!personMap.has(person)) personMap.set(person, new Set());
+            personMap.get(person).add(type);
+        });
+        const rows = [];
+        for(let [person, typesSet] of personMap.entries()){
+            rows.push({ person, types: Array.from(typesSet) });
+        }
+        return rows;
+    }
+    function generateMappingsFromTableRows(rows){
+        const newMappings = [];
+        for(const row of rows){
+            const person = row.person;
+            const types = row.types;
+            if(!person) continue;
+            for(const type of types){
+                newMappings.push({ type, person });
+            }
+        }
+        return newMappings;
+    }
+
+    function createMultiSelectDropdown(selectedTypes, onUpdate){
+        const container = document.createElement('div');
+        container.className = 'multi-select-dropdown';
+        const trigger = document.createElement('div');
+        trigger.className = 'multi-select-trigger';
+        const updateTrigger = ()=>{
+            trigger.innerHTML = '';
+            if(selectedTypes.length === 0){
+                trigger.textContent = '请选择类型';
+                trigger.style.color = '#9ca3af';
+            }else{
+                trigger.style.color = 'inherit';
+                selectedTypes.forEach(type => {
+                    const tag = document.createElement('span');
+                    tag.className = 'selected-tag';
+                    tag.innerHTML = `${escapeHtml(type)} <span class="remove-tag" data-type="${escapeHtml(type)}">✕</span>`;
+                    trigger.appendChild(tag);
+                });
+            }
+            trigger.querySelectorAll('.remove-tag').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const typeToRemove = el.dataset.type;
+                    const idx = selectedTypes.indexOf(typeToRemove);
+                    if(idx !== -1) selectedTypes.splice(idx, 1);
+                    updateTrigger();
+                    if(onUpdate) onUpdate(selectedTypes);
+                });
+            });
+        };
+        updateTrigger();
+        const panel = document.createElement('div');
+        panel.className = 'multi-select-dropdown-panel';
+        let searchKeyword = '';
+        const renderPanel = ()=>{
+            panel.innerHTML = '';
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = '搜索类型...';
+            searchInput.className = 'search-input';
+            searchInput.value = searchKeyword;
+            panel.appendChild(searchInput);
+            const typeList = Array.from(allTypeNames).sort();
+            const filteredTypes = searchKeyword ? typeList.filter(t => t.toLowerCase().includes(searchKeyword.toLowerCase())) : typeList;
+            filteredTypes.forEach(type => {
+                const option = document.createElement('div');
+                option.className = 'multi-select-option';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = type;
+                cb.checked = selectedTypes.includes(type);
+                const label = document.createElement('label');
+                label.textContent = type;
+                option.appendChild(cb);
+                option.appendChild(label);
+                option.addEventListener('click', (e) => {
+                    if(e.target !== cb) cb.click();
+                });
+                cb.addEventListener('change', ()=>{
+                    if(cb.checked){
+                        if(!selectedTypes.includes(type)) selectedTypes.push(type);
+                    }else{
+                        const idx = selectedTypes.indexOf(type);
+                        if(idx !== -1) selectedTypes.splice(idx, 1);
+                    }
+                    updateTrigger();
+                    if(onUpdate) onUpdate(selectedTypes);
+                });
+                panel.appendChild(option);
+            });
+            searchInput.addEventListener('input', (e) => {
+                searchKeyword = e.target.value;
+                renderPanel();
+            });
+        };
+        renderPanel();
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            panel.classList.toggle('open');
+        });
+        document.addEventListener('click', function closePanel(ev){
+            if(!container.contains(ev.target)) panel.classList.remove('open');
+        });
+        container.appendChild(trigger);
+        container.appendChild(panel);
+        return container;
+    }
+
+    function renderTypeTable(){
+        const tbody = document.getElementById('typeTableBody');
+        if(!tbody) return;
+        const personnelOptions = getAllPersonnelOptions();
+        const rows = getTableRowsFromMappings();
+        tbody.innerHTML = '';
+        rows.forEach((row, idx) => {
+            const tr = tbody.insertRow();
+            const cellPerson = tr.insertCell(0);
+            const cellType = tr.insertCell(1);
+            const cellAction = tr.insertCell(2);
+            const select = document.createElement('select');
+            select.className = 'person-select';
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = '未分配';
+            select.appendChild(emptyOpt);
+            personnelOptions.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                if(row.person === p) opt.selected = true;
+                select.appendChild(opt);
+            });
+            cellPerson.appendChild(select);
+            let selectedTypes = [...row.types];
+            const onUpdate = (newSelected) => { selectedTypes = newSelected; };
+            const dropdown = createMultiSelectDropdown(selectedTypes, onUpdate);
+            cellType.appendChild(dropdown);
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '删除';
+            delBtn.className = 'remove-row-btn';
+            delBtn.addEventListener('click', () => {
+                tr.remove();
+            });
+            cellAction.appendChild(delBtn);
+            tr._data = { select, selectedTypes: () => selectedTypes };
+        });
+    }
+
+    function openTypeManageModal(){
+        renderTypeTable();
+        document.getElementById('typeManageModal').classList.add('active');
+    }
+    function closeTypeManageModal(){
+        document.getElementById('typeManageModal').classList.remove('active');
+    }
+    function saveTypeManage(){
+        const tbody = document.getElementById('typeTableBody');
+        const rows = tbody.querySelectorAll('tr');
+        const newRows = [];
+        for(const tr of rows){
+            const personSelect = tr.querySelector('.person-select');
+            const person = personSelect.value;
+            if(!person) continue;
+            const dropdownCell = tr.cells[1];
+            const dropdown = dropdownCell.firstChild;
+            let selectedTypes = [];
+            if(dropdown && dropdown._selectedTypes) selectedTypes = dropdown._selectedTypes;
+            else{
+                const tags = dropdown?.querySelectorAll('.selected-tag');
+                if(tags) selectedTypes = Array.from(tags).map(tag => tag.innerText.replace('✕','').trim());
+            }
+            if(selectedTypes.length === 0) continue;
+            newRows.push({ person, types: selectedTypes });
+        }
+        const newMappings = generateMappingsFromTableRows(newRows);
+        typeMappings = newMappings;
+        saveTypeMappings();
+        closeTypeManageModal();
+        showToast('类型分配保存成功');
+    }
+    function addNewTypeRow(){
+        const tbody = document.getElementById('typeTableBody');
+        const personnelOptions = getAllPersonnelOptions();
+        const tr = tbody.insertRow();
+        const cellPerson = tr.insertCell(0);
+        const cellType = tr.insertCell(1);
+        const cellAction = tr.insertCell(2);
+        const select = document.createElement('select');
+        select.className = 'person-select';
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = '未分配';
+        select.appendChild(emptyOpt);
+        personnelOptions.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = p;
+            select.appendChild(opt);
+        });
+        cellPerson.appendChild(select);
+        let selectedTypes = [];
+        const onUpdate = (newSelected) => { selectedTypes = newSelected; };
+        const dropdown = createMultiSelectDropdown(selectedTypes, onUpdate);
+        cellType.appendChild(dropdown);
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '删除';
+        delBtn.className = 'remove-row-btn';
+        delBtn.addEventListener('click', () => { tr.remove(); });
+        cellAction.appendChild(delBtn);
+        tr._data = { select, selectedTypes: () => selectedTypes };
+    }
+
+    // ===== 聊天/知识库核心逻辑 =====
+    let knowledgeBase = [], nextId=1, kbCurrentPage=1, KB_PAGE_SIZE=5;
+    let kbFilterQuestion='', kbFilterAnswer='', kbFilterTag='', kbFilterType='';
+    const chatMessages = {
+        "dorisllinton@gmail.com": [{ sender:"client", text:"Hello, I need help with my order #2000013411889143", time:"2026-06-15 17:13:52" },{ sender:"agent", text:"您好，感谢您的告知。我们已经了解了订单2000013411889143的情况...", time:"2026-06-15 17:15:20" }],
+        "service@amazon.com": [{ sender:"client", text:"I have a problem with my invoice", time:"2026-06-13 09:33:42" },{ sender:"agent", text:"请提供您的订单号，我们会为您查询发票信息。", time:"2026-06-13 09:35:10" }],
+        "support@oohho.me": [{ sender:"client", text:"我的包裹一直没收到", time:"2026-06-15 10:30:22" },{ sender:"agent", text:"很抱歉给您带来不便，请提供订单号，我们立即为您核实物流信息。", time:"2026-06-15 10:32:05" }]
+    };
+    let currentContact = null, quillEditor = null;
+
+    function initEditor(){ if(quillEditor) return; quillEditor = new Quill('#editorContainer',{ theme:'snow', placeholder:'输入回复内容...', modules:{ toolbar:[['bold','italic','underline','strike'],['blockquote','code-block'],[{ list:'ordered' },{ list:'bullet' }],['link','clean']] } }); }
+    function renderMessages(contactEmail){
+        const container=document.getElementById('messagesArea');
+        const messages=chatMessages[contactEmail]||[];
+        if(messages.length===0){ container.innerHTML='<div style="text-align:center;padding:2rem;color:#9ca3af;">暂无聊天记录，开始新对话吧</div>'; return; }
+        let html='';
+        messages.forEach(msg=>{ const msgClass=msg.sender==='client'?'message client':'message agent'; html+=`<div class="${msgClass}"><div class="bubble">${escapeHtml(msg.text)}</div><div class="message-time">${msg.time}</div></div>`; });
+        container.innerHTML=html; container.scrollTop=container.scrollHeight;
+    }
+    function sendMessage(){
+        if(!currentContact){ showToast('请先选择联系人',true); return; }
+        const editorContent=quillEditor.root.innerHTML;
+        if(!editorContent||editorContent==='<p><br></p>'){ showToast('请输入消息内容',true); return; }
+        const plainText=new DOMParser().parseFromString(editorContent,'text/html').body.textContent.trim();
+        if(!plainText) return;
+        const now=new Date(), timeStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        if(!chatMessages[currentContact.email]) chatMessages[currentContact.email]=[];
+        chatMessages[currentContact.email].push({ sender:"agent", text:plainText, time:timeStr });
+        renderMessages(currentContact.email);
+        quillEditor.root.innerHTML='';
+        showToast('发送成功');
+    }
+    function selectContact(contact){
+        currentContact=contact;
+        document.getElementById('chatHeader').innerHTML=`<h2>${escapeHtml(contact.name)}</h2><p>邮箱：${escapeHtml(contact.email)}</p>`;
+        renderMessages(contact.email);
+    }
+    function renderContacts(shopId){
+        const container=document.getElementById('contactItemsContainer');
+        if(!shopId||!shopContacts[shopId]){ container.innerHTML='<div style="padding:1rem;text-align:center;color:#6b7280;">👈 请选择一个店铺</div>'; return; }
+        let html='';
+        shopContacts[shopId].forEach(contact=>{ html+=`<div class="contact-item" data-email="${contact.email}" data-name="${escapeHtml(contact.name)}"><div class="contact-name">👤 ${escapeHtml(contact.name)}</div><div class="contact-email">${escapeHtml(contact.email)}</div><div class="contact-role">${escapeHtml(contact.role)}</div></div>`; });
+        container.innerHTML=html;
+        document.querySelectorAll('.contact-item').forEach(el=>{ el.addEventListener('click',()=>{ document.querySelectorAll('.contact-item').forEach(c=>c.classList.remove('active')); el.classList.add('active'); selectContact({ email:el.dataset.email, name:el.dataset.name }); }); });
+        const firstContact=document.querySelector('.contact-item'); if(firstContact) firstContact.click();
+    }
+    function initShopNav(){ const items=document.querySelectorAll('.shop-item'); items.forEach(item=>{ item.addEventListener('click',()=>{ items.forEach(i=>i.classList.remove('active')); item.classList.add('active'); renderContacts(item.dataset.shop); }); }); if(items.length) items[0].click(); }
+
+    function parseCommaList(str){ return str?str.split(/[ ,;，；]+/).map(t=>t.trim()).filter(t=>t):[]; }
+    function arrayToCommaString(arr){ return arr.join(', '); }
+    function escapeHtml(str){ if(!str) return ''; return str.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
+
+    function updateDatalists(){
+        const allTags=new Set();
+        knowledgeBase.forEach(item=>{ if(item.tags) item.tags.forEach(t=>allTags.add(t)); });
+        const tagDatalist=document.getElementById('tagOptionsList');
+        if(tagDatalist){ tagDatalist.innerHTML=''; Array.from(allTags).sort().forEach(t=>{ const opt=document.createElement('option'); opt.value=t; tagDatalist.appendChild(opt); }); }
+        updateTypeDatalistFromAssignments();
+    }
+
+    function loadKBData(){
+        const stored=localStorage.getItem('drawer_knowledge_v2');
+        if(stored){ knowledgeBase=JSON.parse(stored); nextId=Math.max(...knowledgeBase.map(k=>k.id),0)+1; }
+        else{ knowledgeBase=[{ id:1, q:'如何更新店铺物流设置？', a:'进入店铺设置-物流模板，选择菜鸟发货。', source:'manual', time:'2025-06-10', author:'客服张', tags:['物流','设置'], type:'物流操作' },{ id:2, q:'订单延迟发货怎么处理？', a:'立即联系买家解释，并在48小时内完成发货。', source:'ai', time:'2025-06-09', author:'AI引擎', tags:['延迟','发货'], type:'售后政策' },{ id:3, q:'如何开具墨西哥RFC发票？', a:'联系税务顾问，上传所需资料。', source:'manual', time:'2025-06-08', author:'王主管', tags:['发票','税务'], type:'财务税务' }]; nextId=4; saveKBData(); }
+        updateDatalists();
+    }
+    function saveKBData(){ localStorage.setItem('drawer_knowledge_v2',JSON.stringify(knowledgeBase)); updateDatalists(); }
+
+    function getFilteredKB(){
+        let filtered=[...knowledgeBase];
+        if(kbFilterQuestion) filtered=filtered.filter(i=>i.q.toLowerCase().includes(kbFilterQuestion.toLowerCase()));
+        if(kbFilterAnswer) filtered=filtered.filter(i=>i.a.toLowerCase().includes(kbFilterAnswer.toLowerCase()));
+        if(kbFilterTag) filtered=filtered.filter(i=>i.tags&&i.tags.some(t=>t.toLowerCase().includes(kbFilterTag.toLowerCase())));
+        if(kbFilterType) filtered=filtered.filter(i=>i.type&&i.type.toLowerCase().includes(kbFilterType.toLowerCase()));
+        return filtered;
+    }
+    function renderKBList(){
+        const filtered=getFilteredKB(), total=filtered.length, totalPages=Math.ceil(total/KB_PAGE_SIZE);
+        if(kbCurrentPage>totalPages&&totalPages>0) kbCurrentPage=totalPages;
+        if(kbCurrentPage<1) kbCurrentPage=1;
+        const paginated=filtered.slice((kbCurrentPage-1)*KB_PAGE_SIZE, kbCurrentPage*KB_PAGE_SIZE);
+        const container=document.getElementById('kbListContainer');
+        if(paginated.length===0){ container.innerHTML='<div style="text-align:center;padding:2rem;">✨ 暂无知识库条目</div>'; document.getElementById('kbPagination').innerHTML=''; return; }
+        let html='<div class="qa-list">';
+        paginated.forEach(item=>{
+            const sourceClass=item.source==='ai'?'tag-ai':'tag-manual', sourceText=item.source==='ai'?'AI采集':'手动创建';
+            const tagsHtml=item.tags&&item.tags.length?item.tags.map(t=>`<span class="tag tag-custom">#${escapeHtml(t)}</span>`).join(''):'';
+            const typeHtml=item.type?`<span class="tag tag-type">📁 ${escapeHtml(item.type)}</span>`:'';
+            html+=`<div class="qa-item"><div class="qa-question">❓ ${escapeHtml(item.q)}</div><div class="tag-group">${typeHtml}<span class="tag ${sourceClass}">${sourceText}</span>${tagsHtml}</div><div class="qa-answer">💡 ${escapeHtml(item.a)}</div><div class="qa-meta"><span>📅 ${item.time} ｜ ✍️ ${escapeHtml(item.author)}</span><div><button class="action-btn edit" data-id="${item.id}">✏️ 编辑</button><button class="action-btn delete" data-id="${item.id}">🗑️ 删除</button></div></div></div>`;
+        });
+        html+='</div>'; container.innerHTML=html;
+        let pagHtml=''; for(let i=1;i<=totalPages;i++) pagHtml+=`<button class="page-btn ${i===kbCurrentPage?'active':''}" data-page="${i}">${i}</button>`;
+        document.getElementById('kbPagination').innerHTML=`<button class="page-btn" data-page="prev" ${kbCurrentPage===1?'disabled style="opacity:0.5"':''}>上一页</button>${pagHtml}<button class="page-btn" data-page="next" ${kbCurrentPage===totalPages?'disabled style="opacity:0.5"':''}>下一页</button>`;
+        document.querySelectorAll('#kbPagination .page-btn').forEach(btn=>btn.addEventListener('click',()=>{ const pg=btn.dataset.page; if(pg==='prev'&&kbCurrentPage>1) kbCurrentPage--; else if(pg==='next'&&kbCurrentPage<totalPages) kbCurrentPage++; else if(!isNaN(parseInt(pg))) kbCurrentPage=parseInt(pg); renderKBList(); }));
+        document.querySelectorAll('#kbListContainer .edit').forEach(btn=>btn.addEventListener('click',()=>openKBModal(parseInt(btn.dataset.id))));
+        document.querySelectorAll('#kbListContainer .delete').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('删除后无法恢复')) deleteKBItem(parseInt(btn.dataset.id)); }));
+    }
+    function deleteKBItem(id){ knowledgeBase=knowledgeBase.filter(i=>i.id!==id); saveKBData(); renderKBList(); showToast('已删除'); }
+
+    // 编辑/新建弹窗 - 编辑时类型只读
+    function openKBModal(id=null){
+        const modal=document.getElementById('kbModal'), title=document.getElementById('kbModalTitle'), editId=document.getElementById('editId');
+        const qInput=document.getElementById('kbQuestion'), aInput=document.getElementById('kbAnswer'), typeInput=document.getElementById('kbType'), tagsInput=document.getElementById('kbTags');
+        if(id){
+            const item=knowledgeBase.find(i=>i.id===id);
+            if(item){
+                title.innerText='编辑问答';
+                editId.value=item.id;
+                qInput.value=item.q;
+                aInput.value=item.a;
+                typeInput.value=item.type||'';
+                typeInput.readOnly=true;
+                typeInput.style.backgroundColor='#f3f4f6';
+                tagsInput.value=arrayToCommaString(item.tags||[]);
+            }
+        }else{
+            title.innerText='新建问答';
+            editId.value='';
+            qInput.value='';
+            aInput.value='';
+            typeInput.value='';
+            typeInput.readOnly=false;
+            typeInput.style.backgroundColor='';
+            tagsInput.value='';
+        }
+        modal.classList.add('active');
+    }
+
+    function closeKBModal(){ document.getElementById('kbModal').classList.remove('active'); }
+
+    function saveKBModal(){
+        const id=document.getElementById('editId').value?parseInt(document.getElementById('editId').value):null;
+        const q=document.getElementById('kbQuestion').value.trim();
+        const a=document.getElementById('kbAnswer').value.trim();
+        if(!q||!a){ showToast('请填写问题和答案',true); return; }
+        const tagsRaw=document.getElementById('kbTags').value;
+        const tags=parseCommaList(tagsRaw);
+        let type;
+        if(id){
+            const idx=knowledgeBase.findIndex(i=>i.id===id);
+            if(idx!==-1) type=knowledgeBase[idx].type;
+        }else{
+            type=document.getElementById('kbType').value.trim();
+            if(type && !allTypeNames.has(type)){
+                typeList.push({ name: type, createdAt: new Date().toISOString().slice(0,10) });
+                saveTypeList();
+            }
+        }
+        if(id){
+            const idx=knowledgeBase.findIndex(i=>i.id===id);
+            if(idx!==-1) knowledgeBase[idx]={...knowledgeBase[idx], q, a, tags, time:new Date().toISOString().slice(0,10), author:'人工编辑'};
+        }else{
+            knowledgeBase.unshift({ id:nextId++, q, a, source:'manual', time:new Date().toISOString().slice(0,10), author:'客服创建', tags, type });
+        }
+        saveKBData(); renderKBList(); closeKBModal(); showToast(id?'修改成功':'新建成功');
+    }
+
+    function openDrawer(){ document.getElementById('knowledgeDrawer').classList.add('open'); document.getElementById('drawerOverlay').classList.add('show'); renderKBList(); }
+    function closeDrawer(){ document.getElementById('knowledgeDrawer').classList.remove('open'); document.getElementById('drawerOverlay').classList.remove('show'); }
+    function bindKBFilters(){
+        const qF=document.getElementById('kbFilterQuestion'), aF=document.getElementById('kbFilterAnswer'), tF=document.getElementById('kbFilterTag'), tyF=document.getElementById('kbFilterType');
+        const update=()=>{ kbFilterQuestion=qF.value; kbFilterAnswer=aF.value; kbFilterTag=tF.value; kbFilterType=tyF.value; kbCurrentPage=1; renderKBList(); };
+        qF.addEventListener('input',update); aF.addEventListener('input',update); tF.addEventListener('input',update); tyF.addEventListener('input',update);
+    }
+
+    // ===== AI 面板功能 (带换一批) =====
+    let aiPanelOpen = false;
+    let aiOffset = 0;
+    const AI_PAGE_SIZE = 5;
+
+    function toggleAiPanel(){
+        const panel = document.getElementById('aiPanel');
+        aiPanelOpen = !aiPanelOpen;
+        panel.classList.toggle('open', aiPanelOpen);
+        if(aiPanelOpen){
+            aiOffset = 0;
+            renderAIRecommendations();
+        }
+    }
+    function closeAiPanel(){
+        document.getElementById('aiPanel').classList.remove('open');
+        aiPanelOpen = false;
+    }
+
+    function getCurrentContext(){
+        if(!currentContact) return '';
+        const messages = chatMessages[currentContact.email] || [];
+        const clientMsgs = messages.filter(m => m.sender === 'client');
+        if(clientMsgs.length === 0) return '';
+        const last = clientMsgs[clientMsgs.length - 1];
+        return last.text;
+    }
+
+    function renderAIRecommendations(){
+        const listDiv = document.getElementById('aiRecommendList');
+        const context = getCurrentContext();
+        const contextInfo = document.getElementById('aiContextInfo');
+        if(context){
+            contextInfo.textContent = `上下文: “${context.length > 50 ? context.slice(0,50)+'...' : context}”`;
+        }else{
+            contextInfo.textContent = '暂无客户消息，显示全部知识库';
+        }
+        const typeSearch = document.getElementById('aiTypeSearch').value.trim().toLowerCase();
+        let filtered = [...knowledgeBase];
+        if(typeSearch){
+            filtered = filtered.filter(item => item.type && item.type.toLowerCase().includes(typeSearch));
+        }
+        if(context){
+            const keywords = context.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+            filtered = filtered.map(item => {
+                let score = 0;
+                if(item.type){
+                    keywords.forEach(kw => { if(item.type.toLowerCase().includes(kw)) score += 2; });
+                }
+                if(item.tags){
+                    item.tags.forEach(tag => {
+                        keywords.forEach(kw => { if(tag.toLowerCase().includes(kw)) score += 1; });
+                    });
+                }
+                if(item.q){
+                    keywords.forEach(kw => { if(item.q.toLowerCase().includes(kw)) score += 1; });
+                }
+                return { ...item, score };
+            }).sort((a,b) => b.score - a.score);
+        }
+
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / AI_PAGE_SIZE);
+        if (aiOffset >= total && total > 0) {
+            aiOffset = Math.max(0, total - AI_PAGE_SIZE);
+        }
+        if (aiOffset < 0) aiOffset = 0;
+        const start = aiOffset;
+        const end = Math.min(start + AI_PAGE_SIZE, total);
+        const pageItems = filtered.slice(start, end);
+
+        const pageInfo = document.getElementById('aiPaginationInfo');
+        if (total > 0) {
+            pageInfo.textContent = `显示 ${start+1} - ${end} 条 (共 ${total} 条)`;
+        } else {
+            pageInfo.textContent = '';
+        }
+
+        if (pageItems.length === 0){
+            listDiv.innerHTML = `<div class="ai-empty">未找到匹配类型</div>`;
+            return;
+        }
+
+        let html = '';
+        pageItems.forEach(item => {
+            const typeTag = item.type ? `<span class="tag tag-type">📁 ${escapeHtml(item.type)}</span>` : '';
+            const tagsHtml = item.tags && item.tags.length ? item.tags.map(t => `<span class="tag tag-custom">#${escapeHtml(t)}</span>`).join('') : '';
+            html += `
+                <div class="ai-recommend-item">
+                    <div class="answer">💡 ${escapeHtml(item.a)}</div>
+                    <div class="meta">${typeTag} ${tagsHtml}</div>
+                    <div class="actions">
+                        <button onclick="useAIAnswer(${item.id})">使用此答案</button>
+                    </div>
+                </div>
+            `;
+        });
+        listDiv.innerHTML = html;
+    }
+
+    // 换一批
+    function shuffleAI(){
+        const typeSearch = document.getElementById('aiTypeSearch').value.trim().toLowerCase();
+        let filtered = [...knowledgeBase];
+        if(typeSearch){
+            filtered = filtered.filter(item => item.type && item.type.toLowerCase().includes(typeSearch));
+        }
+        const total = filtered.length;
+        if (total === 0) return;
+        const totalPages = Math.ceil(total / AI_PAGE_SIZE);
+        if (totalPages <= 1) {
+            showToast('只有一页，无法换一批');
+            return;
+        }
+        aiOffset += AI_PAGE_SIZE;
+        if (aiOffset >= total) aiOffset = 0;
+        renderAIRecommendations();
+    }
+
+    function useAIAnswer(id){
+        const item = knowledgeBase.find(i => i.id === id);
+        if(item && quillEditor){
+            quillEditor.root.innerHTML = '<p>' + escapeHtml(item.a) + '</p>';
+            showToast('已填入编辑器');
+            closeAiPanel();
+        }
+    }
+
+    document.getElementById('aiTypeSearch').addEventListener('input', function(){
+        aiOffset = 0;
+        renderAIRecommendations();
+    });
+
+    function showToast(msg,isErr=false){ const toast=document.getElementById('toastMessage'); toast.textContent=msg; toast.style.background=isErr?'#ef4444':'#111827'; toast.style.opacity='1'; setTimeout(()=>toast.style.opacity='0',2000); }
+
+    function init(){
+        initShopNav(); initEditor();
+        const storedKB=localStorage.getItem('drawer_knowledge_v2');
+        if(storedKB){ knowledgeBase=JSON.parse(storedKB); nextId=Math.max(...knowledgeBase.map(k=>k.id),0)+1; }
+        else{ knowledgeBase=[{ id:1, q:'如何更新店铺物流设置？', a:'进入店铺设置-物流模板，选择菜鸟发货。', source:'manual', time:'2025-06-10', author:'客服张', tags:['物流','设置'], type:'物流操作' },{ id:2, q:'订单延迟发货怎么处理？', a:'立即联系买家解释，并在48小时内完成发货。', source:'ai', time:'2025-06-09', author:'AI引擎', tags:['延迟','发货'], type:'售后政策' },{ id:3, q:'如何开具墨西哥RFC发票？', a:'联系税务顾问，上传所需资料。', source:'manual', time:'2025-06-08', author:'王主管', tags:['发票','税务'], type:'财务税务' }]; nextId=4; saveKBData(); }
+        loadTypeList();
+        loadTypeMappings();
+        updateDatalists();
+        bindKBFilters();
+        document.getElementById('openDrawerBtn').addEventListener('click',openDrawer);
+        document.getElementById('closeDrawerBtn').addEventListener('click',closeDrawer);
+        document.getElementById('drawerOverlay').addEventListener('click',closeDrawer);
+        document.getElementById('kbCreateBtn').addEventListener('click',()=>openKBModal());
+        document.getElementById('closeModalBtn').addEventListener('click',closeKBModal);
+        document.getElementById('cancelModalBtn').addEventListener('click',closeKBModal);
+        document.getElementById('saveModalBtn').addEventListener('click',saveKBModal);
+        document.getElementById('sendMsgBtn').addEventListener('click',sendMessage);
+        // 类型分配
+        document.getElementById('typeManageBtn').addEventListener('click',openTypeManageModal);
+        document.getElementById('closeTypeManageBtn').addEventListener('click',closeTypeManageModal);
+        document.getElementById('cancelTypeManageBtn').addEventListener('click',closeTypeManageModal);
+        document.getElementById('confirmTypeManageBtn').addEventListener('click',saveTypeManage);
+        document.getElementById('addTypeRowBtn').addEventListener('click',addNewTypeRow);
+        // 类型管理
+        document.getElementById('typeListBtn').addEventListener('click',openTypeListModal);
+        document.getElementById('closeTypeListBtn').addEventListener('click',closeTypeListModal);
+        document.getElementById('cancelTypeListBtn').addEventListener('click',closeTypeListModal);
+        document.getElementById('addTypeToListBtn').addEventListener('click',addNewTypeToList);
+        document.getElementById('newTypeName').addEventListener('keypress',(e)=>{ if(e.key==='Enter') addNewTypeToList(); });
+        // AI 面板
+        document.getElementById('knowledgeBtn').addEventListener('click',function(){
+            aiOffset = 0;
+            toggleAiPanel();
+        });
+        document.getElementById('closeAiPanelBtn').addEventListener('click',closeAiPanel);
+        document.getElementById('aiShuffleBtn').addEventListener('click',shuffleAI);
+        renderKBList();
+        closeAiPanel();
+    }
+    init();
+</script>
+</body>
+</html>
